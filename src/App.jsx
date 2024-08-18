@@ -10,24 +10,56 @@ import {
   Text,
 } from '@chakra-ui/react';
 import { Alchemy, Network, Utils } from 'alchemy-sdk';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {ethers} from 'ethers'
+
+async function connectMetaMask() {
+  console.log('connecting MetaMask')
+  // 检查是否存在 MetaMask
+  if (typeof window.ethereum !== 'undefined') {
+      try {
+          // 请求用户授权连接钱包
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          // 创建 Ethers.js 提供者
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          // 获取用户账户
+          const signer = provider.getSigner();
+          const userAddress = await signer.getAddress();
+
+          console.log('Connected address:', userAddress);
+          return userAddress;
+      } catch (error) {
+          console.error('User denied account access', error);
+      }
+  } else {
+      console.alert('MetaMask is not installed');
+  }
+}
+
 
 function App() {
   const [userAddress, setUserAddress] = useState('');
   const [results, setResults] = useState([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [tokenDataObjects, setTokenDataObjects] = useState([]);
+  
+  useEffect(()=>{
+    setUserAddress(connectMetaMask())
+  },[])
+  
 
   async function getTokenBalance() {
     const config = {
-      apiKey: '<-- COPY-PASTE YOUR ALCHEMY API KEY HERE -->',
+      apiKey: "OnvrtKZIFNpa3h9xdW5h2OEyeZl7J5BS",
       network: Network.ETH_MAINNET,
     };
 
+  
     const alchemy = new Alchemy(config);
     const data = await alchemy.core.getTokenBalances(userAddress);
 
     setResults(data);
+    console.log('data from inquiry',data)
 
     const tokenDataPromises = [];
 
@@ -35,12 +67,15 @@ function App() {
       const tokenData = alchemy.core.getTokenMetadata(
         data.tokenBalances[i].contractAddress
       );
+      console.log('tokendata',tokenData)
       tokenDataPromises.push(tokenData);
     }
 
     setTokenDataObjects(await Promise.all(tokenDataPromises));
     setHasQueried(true);
+    
   }
+
   return (
     <Box w="100vw">
       <Center>
@@ -75,10 +110,13 @@ function App() {
           p={4}
           bgColor="white"
           fontSize={24}
+          id="userAddress"
         />
-        <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="blue">
+        <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="lightblue">
           Check ERC-20 Token Balances
         </Button>
+
+        <Text>{hasQueried?'':'Inquring'}</Text>
 
         <Heading my={36}>ERC-20 token balances:</Heading>
 
@@ -88,8 +126,8 @@ function App() {
               return (
                 <Flex
                   flexDir={'column'}
-                  color="white"
-                  bg="blue"
+                  color="black"
+                  bg="lightGray"
                   w={'20vw'}
                   key={e.id}
                 >
@@ -103,7 +141,7 @@ function App() {
                       tokenDataObjects[i].decimals
                     )}
                   </Box>
-                  <Image src={tokenDataObjects[i].logo} />
+                  <Image src={tokenDataObjects[i].logo } />
                 </Flex>
               );
             })}
